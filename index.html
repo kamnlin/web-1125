@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-CHRONO // 未來科技數位時鐘</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入科技感等寬字型 Orbitron 與 Share Tech Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'cyber': ['"Orbitron"', 'sans-serif'],
+                        'mono-tech': ['"Share Tech Mono"', '"Noto Sans TC"', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* --- 科技主題色彩變數 --- */
+        :root {
+            /* 預設：量子霓虹藍 (Cyber Cyan) */
+            --bg-base: #030712;
+            --grid-color: rgba(6, 182, 212, 0.12);
+            --primary: #06b6d4;
+            --primary-glow: rgba(6, 182, 212, 0.65);
+            --secondary: #3b82f6;
+            --panel-bg: rgba(15, 23, 42, 0.75);
+            --panel-border: rgba(6, 182, 212, 0.4);
+            --text-main: #ecfeff;
+            --text-muted: #67e8f9;
+        }
+
+        /* 主題二：駭客矩陣綠 (Matrix Emerald) */
+        body.theme-matrix {
+            --bg-base: #020c06;
+            --grid-color: rgba(16, 185, 129, 0.14);
+            --primary: #10b981;
+            --primary-glow: rgba(16, 185, 129, 0.65);
+            --secondary: #059669;
+            --panel-bg: rgba(6, 28, 18, 0.78);
+            --panel-border: rgba(16, 185, 129, 0.45);
+            --text-main: #ecfdf5;
+            --text-muted: #6ee7b7;
+        }
+
+        /* 主題三：警戒緋紅 (Crimson Alert) */
+        body.theme-crimson {
+            --bg-base: #0f0306;
+            --grid-color: rgba(244, 63, 94, 0.14);
+            --primary: #f43f5e;
+            --primary-glow: rgba(244, 63, 94, 0.65);
+            --secondary: #e11d48;
+            --panel-bg: rgba(31, 10, 16, 0.78);
+            --panel-border: rgba(244, 63, 94, 0.45);
+            --text-main: #fff1f2;
+            --text-muted: #fda4af;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            transition: background-color 0.5s ease, color 0.5s ease;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        /* 動態透視網格背景 */
+        .cyber-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            mask-image: radial-gradient(circle at center, black 40%, transparent 95%);
+            -webkit-mask-image: radial-gradient(circle at center, black 40%, transparent 95%);
+        }
+
+        /* CRT 螢幕掃描線特效 */
+        .scanlines {
+            background: linear-gradient(
+                to bottom,
+                rgba(255,255,255,0),
+                rgba(255,255,255,0) 50%,
+                rgba(0,0,0,0.28) 50%,
+                rgba(0,0,0,0.28)
+            );
+            background-size: 100% 4px;
+        }
+
+        /* 霓虹發光文字 */
+        .neon-text {
+            color: var(--text-main);
+            text-shadow: 
+                0 0 10px var(--primary-glow),
+                0 0 25px var(--primary-glow),
+                0 0 45px var(--primary);
+            transition: text-shadow 0.5s ease;
+        }
+
+        .neon-subtext {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary-glow);
+            transition: color 0.5s ease, text-shadow 0.5s ease;
+        }
+
+        /* HUD 科技感邊框與切角 */
+        .hud-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            position: relative;
+            transition: all 0.5s ease;
+        }
+
+        /* 四角裝飾準星 */
+        .hud-corner {
+            position: absolute;
+            width: 14px;
+            height: 14px;
+            border-color: var(--primary);
+            transition: border-color 0.5s ease;
+        }
+        .hud-tl { top: -2px; left: -2px; border-top: 3px solid; border-left: 3px solid; }
+        .hud-tr { top: -2px; right: -2px; border-top: 3px solid; border-right: 3px solid; }
+        .hud-bl { bottom: -2px; left: -2px; border-bottom: 3px solid; border-left: 3px solid; }
+        .hud-br { bottom: -2px; right: -2px; border-bottom: 3px solid; border-right: 3px solid; }
+
+        /* 冒號閃爍動畫 */
+        @keyframes pulseColon {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.25; }
+        }
+        .colon-blink {
+            animation: pulseColon 1s infinite;
+        }
+
+        /* 按鈕懸停光暈 */
+        .cyber-btn {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            color: var(--text-main);
+            transition: all 0.25s ease;
+        }
+        .cyber-btn:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+            transform: translateY(-2px);
+        }
+        .cyber-btn:active {
+            transform: scale(0.96);
+        }
+
+        /* 掃描光束特效 (點擊面板時觸發) */
+        @keyframes scanBeam {
+            0% { top: 0%; opacity: 0.8; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .beam-active {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary);
+            box-shadow: 0 0 15px 3px var(--primary);
+            animation: scanBeam 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4 relative">
+
+    <!-- 背景網格與掃描線 -->
+    <div class="fixed inset-0 cyber-grid pointer-events-none z-0"></div>
+    <div class="fixed inset-0 scanlines pointer-events-none z-50 opacity-40"></div>
+
+    <!-- 主容器 -->
+    <main class="relative z-10 w-full max-w-2xl flex flex-col items-center">
+        
+        <!-- 頂部系統狀態列 -->
+        <div class="w-full flex justify-between items-center px-3 py-2 mb-3 text-xs sm:text-sm font-mono-tech tracking-widest uppercase opacity-85">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full animate-ping" style="background-color: var(--primary);"></span>
+                <span class="neon-subtext font-bold">SYS.CHRONO // ONLINE</span>
+            </div>
+            <div id="timezone-display" class="text-slate-400">UTC+8 // TAIPEI</div>
+        </div>
+
+        <!-- 核心數位時鐘 HUD 面板 (點擊可觸發雷達掃描波) -->
+        <div id="hud-clock-card" class="hud-panel w-full rounded-xl p-6 sm:p-10 cursor-pointer overflow-hidden" title="點擊觸發系統脈衝掃描">
+            <!-- 四角準星 -->
+            <div class="hud-corner hud-tl"></div>
+            <div class="hud-corner hud-tr"></div>
+            <div class="hud-corner hud-bl"></div>
+            <div class="hud-corner hud-br"></div>
+
+            <!-- 頂部微資訊與 AM/PM 標籤 -->
+            <div class="flex justify-between items-center mb-4 font-mono-tech text-xs sm:text-sm">
+                <span id="status-greeting" class="px-2.5 py-0.5 rounded border border-current neon-subtext">
+                    [ STATUS: ACTIVE ]
+                </span>
+                <div class="flex items-center gap-3">
+                    <span id="ampm-indicator" class="px-2 py-0.5 rounded font-bold tracking-wider hidden" style="background-color: var(--primary); color: #000;">
+                        PM
+                    </span>
+                    <span class="text-slate-400">SYNC: 99.98%</span>
+                </div>
+            </div>
+
+            <!-- 超大型發光數位時間顯示區 -->
+            <div class="flex items-baseline justify-center my-4 sm:my-6 font-cyber">
+                <!-- 時 -->
+                <span id="hours" class="text-6xl sm:text-8xl md:text-9xl font-black tracking-tight neon-text">19</span>
+                <!-- 閃爍冒號 -->
+                <span class="text-5xl sm:text-7xl md:text-8xl font-bold mx-1 sm:mx-2 neon-subtext colon-blink">:</span>
+                <!-- 分 -->
+                <span id="minutes" class="text-6xl sm:text-8xl md:text-9xl font-black tracking-tight neon-text">47</span>
+                
+                <!-- 秒數與毫秒區塊 -->
+                <div class="flex flex-col justify-end ml-3 sm:ml-5 pb-1 sm:pb-3">
+                    <span id="seconds" class="text-2xl sm:text-4xl md:text-5xl font-bold neon-subtext leading-none">00</span>
+                    <span id="milliseconds" class="text-xs sm:text-sm font-mono-tech text-slate-400 mt-1 tracking-widest">.000</span>
+                </div>
+            </div>
+
+            <!-- 60秒動態進度能量條 -->
+            <div class="w-full mt-6">
+                <div class="flex justify-between text-[11px] font-mono-tech text-slate-400 mb-1.5">
+                    <span>CYCLE PROGRESS</span>
+                    <span id="sec-percent">0%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900/90 rounded-full overflow-hidden border border-slate-700/60 p-[1px]">
+                    <div id="second-progress-bar" class="h-full rounded-full transition-all duration-100 ease-linear" style="width: 0%; background-color: var(--primary); box-shadow: 0 0 10px var(--primary);"></div>
+                </div>
+            </div>
+
+            <!-- 底部日期與星期數據列 -->
+            <div class="mt-6 pt-4 border-t border-slate-700/50 flex flex-col sm:flex-row justify-between items-center gap-2 font-mono-tech">
+                <div id="date-display" class="text-base sm:text-lg tracking-widest font-bold text-slate-200">
+                    2026.11.25 // WEDNESDAY
+                </div>
+                <div id="day-of-year" class="text-xs sm:text-sm neon-subtext">
+                    DAY 329 OF 365
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部科技控制按鈕列 -->
+        <div class="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full font-mono-tech text-sm">
+            <!-- 1. 切換發光色系 -->
+            <button id="theme-btn" class="cyber-btn rounded-lg py-3 px-4 flex items-center justify-center gap-2 cursor-pointer font-bold tracking-wider">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"></path></svg>
+                <span id="theme-label">光譜：量子藍</span>
+            </button>
+
+            <!-- 2. 電子脈衝音效開關 -->
+            <button id="sound-btn" class="cyber-btn rounded-lg py-3 px-4 flex items-center justify-center gap-2 cursor-pointer font-bold tracking-wider">
+                <svg id="sound-icon-svg" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clip-rule="evenodd"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                <span id="sound-label">脈衝音：OFF</span>
+            </button>
+
+            <!-- 3. 12/24 小時制切換 -->
+            <button id="format-btn" class="cyber-btn rounded-lg py-3 px-4 flex items-center justify-center gap-2 cursor-pointer font-bold tracking-wider">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="format-label">模式：24H</span>
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        // --- 系統狀態 ---
+        const themes = [
+            { class: '', name: '光譜：量子藍' },
+            { class: 'theme-matrix', name: '光譜：矩陣綠' },
+            { class: 'theme-crimson', name: '光譜：警戒紅' }
+        ];
+        let currentThemeIdx = 0;
+        let isSoundOn = false;
+        let is24Hour = true;
+        let audioCtx = null;
+        let lastSecond = -1;
+
+        // --- DOM 元素 ---
+        const hoursEl = document.getElementById('hours');
+        const minutesEl = document.getElementById('minutes');
+        const secondsEl = document.getElementById('seconds');
+        const millisecondsEl = document.getElementById('milliseconds');
+        const ampmIndicatorEl = document.getElementById('ampm-indicator');
+        const progressBarEl = document.getElementById('second-progress-bar');
+        const secPercentEl = document.getElementById('sec-percent');
+        const dateDisplayEl = document.getElementById('date-display');
+        const dayOfYearEl = document.getElementById('day-of-year');
+        const statusGreetingEl = document.getElementById('status-greeting');
+        const hudClockCard = document.getElementById('hud-clock-card');
+
+        // 按鈕元素
+        const themeBtn = document.getElementById('theme-btn');
+        const themeLabel = document.getElementById('theme-label');
+        const soundBtn = document.getElementById('sound-btn');
+        const soundLabel = document.getElementById('sound-label');
+        const formatBtn = document.getElementById('format-btn');
+        const formatLabel = document.getElementById('format-label');
+
+        // --- Web Audio API 合成科幻電子音效 ---
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 高頻短促電子脈衝音 (每秒觸發)
+        function playCyberTick(isMinuteStart) {
+            if (!isSoundOn || !audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            // 整分時音調較高較清脆，一般秒數為極短促的科技微聲
+            const freq = isMinuteStart ? 1600 : 1100;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(300, audioCtx.currentTime + 0.025);
+
+            gain.gain.setValueAtTime(isMinuteStart ? 0.12 : 0.04, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.025);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.03);
+        }
+
+        // 雷達掃描音效 (點擊主面板時觸發)
+        function playScanSound() {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.25);
+
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.28);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        // --- 計算一年中的第幾天 ---
+        function getDayOfYear(date) {
+            const start = new Date(date.getFullYear(), 0, 0);
+            const diff = date - start;
+            const oneDay = 1000 * 60 * 60 * 24;
+            return Math.floor(diff / oneDay);
+        }
+
+        // --- 核心時間更新迴圈 (使用 requestAnimationFrame 呈現流暢毫秒) ---
+        function updateCyberClock() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const seconds = now.getSeconds();
+            const ms = now.getMilliseconds();
+
+            // 每秒觸發脈衝音效
+            if (seconds !== lastSecond) {
+                lastSecond = seconds;
+                playCyberTick(seconds === 0);
+            }
+
+            // 處理 12 / 24 小時制
+            let displayHours = hours;
+            if (!is24Hour) {
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                displayHours = hours % 12 || 12;
+                ampmIndicatorEl.textContent = ampm;
+                ampmIndicatorEl.classList.remove('hidden');
+            } else {
+                ampmIndicatorEl.classList.add('hidden');
+            }
+
+            // 更新數字顯示
+            hoursEl.textContent = String(displayHours).padStart(2, '0');
+            minutesEl.textContent = String(minutes).padStart(2, '0');
+            secondsEl.textContent = String(seconds).padStart(2, '0');
+            millisecondsEl.textContent = '.' + String(ms).padStart(3, '0');
+
+            // 更新 60 秒能量條
+            const exactSeconds = seconds + ms / 1000;
+            const percentage = (exactSeconds / 60) * 100;
+            progressBarEl.style.width = `${percentage}%`;
+            secPercentEl.textContent = `${Math.floor(percentage)}%`;
+
+            // 更新日期與星期
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const weekDays = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+            dateDisplayEl.textContent = `${year}.${month}.${day} // ${weekDays[now.getDay()]}`;
+
+            // 更新年度天數
+            const currentDayNum = getDayOfYear(now);
+            const isLeap = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+            dayOfYearEl.textContent = `DAY ${String(currentDayNum).padStart(3, '0')} OF ${isLeap ? 366 : 365}`;
+
+            // 更新時段系統提示
+            updateSystemStatus(hours);
+
+            requestAnimationFrame(updateCyberClock);
+        }
+
+        function updateSystemStatus(hours) {
+            let statusText = '[ MODE: STANDARD OPERATION ]';
+            if (hours >= 5 && hours < 12) {
+                statusText = '[ PHASE: MORNING BOOT // 系統啟動 ]';
+            } else if (hours >= 12 && hours < 18) {
+                statusText = '[ PHASE: PEAK EFFICIENCY // 高效運作 ]';
+            } else if (hours >= 18 && hours < 23) {
+                statusText = '[ PHASE: NIGHT PROTOCOL // 夜間模式 ]';
+            } else {
+                statusText = '[ PHASE: DEEP SLEEP STANDBY // 休眠待機 ]';
+            }
+            if (statusGreetingEl.textContent !== statusText) {
+                statusGreetingEl.textContent = statusText;
+            }
+        }
+
+        // --- 互動事件 ---
+
+        // 1. 點擊主面板觸發雷達掃描特效
+        hudClockCard.addEventListener('click', () => {
+            playScanSound();
+            const beam = document.createElement('div');
+            beam.className = 'beam-active';
+            hudClockCard.appendChild(beam);
+            setTimeout(() => beam.remove(), 650);
+        });
+
+        // 2. 切換科技光譜主題 (量子藍 -> 矩陣綠 -> 警戒紅)
+        themeBtn.addEventListener('click', () => {
+            if (themes[currentThemeIdx].class) {
+                document.body.classList.remove(themes[currentThemeIdx].class);
+            }
+            currentThemeIdx = (currentThemeIdx + 1) % themes.length;
+            if (themes[currentThemeIdx].class) {
+                document.body.classList.add(themes[currentThemeIdx].class);
+            }
+            themeLabel.textContent = themes[currentThemeIdx].name;
+        });
+
+        // 3. 切換電子脈衝音效
+        soundBtn.addEventListener('click', () => {
+            initAudio();
+            isSoundOn = !isSoundOn;
+            soundLabel.textContent = isSoundOn ? '脈衝音：ON' : '脈衝音：OFF';
+            if (isSoundOn) {
+                soundBtn.style.borderColor = 'var(--primary)';
+                soundBtn.style.boxShadow = '0 0 12px var(--primary-glow)';
+            } else {
+                soundBtn.style.borderColor = '';
+                soundBtn.style.boxShadow = '';
+            }
+        });
+
+        // 4. 切換 12/24 小時制
+        formatBtn.addEventListener('click', () => {
+            is24Hour = !is24Hour;
+            formatLabel.textContent = is24Hour ? '模式：24H' : '模式：12H';
+        });
+
+        // 啟動時鐘
+        requestAnimationFrame(updateCyberClock);
+    </script>
+</body>
+</html>
