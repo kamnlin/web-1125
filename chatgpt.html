@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>喵喵時鐘</title>
+<style>
+:root{color-scheme:light;--ink:#593833;--soft:#795752;--paper:#fffaf0;--bg:#f9e8d5;--dot:#eccfb9;--rim:#fff5e5;--pink:#f1a7a8;--accent:#b04560}
+:root[data-theme=night]{color-scheme:dark;--ink:#fff0e8;--soft:#ecbdcb;--paper:#38283c;--bg:#251d30;--dot:#4c3952;--rim:#4a334b;--pink:#a95e7c;--accent:#ff9db8}
+*{box-sizing:border-box}
+body{margin:0;min-height:100svh;display:grid;place-items:center;padding:24px;color:var(--ink);background:radial-gradient(circle,var(--dot) 1.4px,transparent 1.6px) center/23px 23px,var(--bg);font-family:ui-rounded,"Microsoft JhengHei",system-ui,sans-serif}
+main{position:relative;text-align:center;width:min(100%,430px);padding:28px 24px 24px;background:var(--paper);border:2px solid var(--dot);border-radius:42px;box-shadow:0 12px 0 -4px var(--dot),0 25px 60px #58362c20}
+h1{font-size:clamp(1.45rem,5vw,1.85rem);letter-spacing:.12em;margin:4px 0 0}
+.stage{position:relative;width:min(100%,290px);margin:50px auto 15px}
+.ear{position:absolute;top:-8%;width:31%;height:35%;background:var(--pink);border:6px solid var(--rim);border-radius:22% 58% 35% 55%;transform:rotate(-12deg);left:4%;box-shadow:0 0 0 2px var(--dot)}
+.ear.right{left:auto;right:4%;transform:scaleX(-1) rotate(-12deg)}
+.dial{position:relative;width:100%;aspect-ratio:1;border-radius:50%;border:8px solid var(--rim);box-shadow:0 0 0 2px var(--dot),inset 0 0 24px var(--dot);background:var(--paper)}
+.tick,.number,.hand,.hub,.face{position:absolute}
+.tick{width:2px;height:5px;border-radius:3px;background:var(--dot);translate:-50% -50%}
+.tick.major{width:3px;height:8px;background:var(--soft)}
+.number{translate:-50% -50%;font-weight:800;font-size:clamp(.85rem,3.7vw,1.13rem)}
+.hand{left:50%;bottom:50%;translate:-50% 0;transform-origin:50% 100%;border-radius:99px;background:var(--ink)}
+.hour{width:8px;height:24%}.minute{width:5px;height:33%}.second{width:2px;height:37%;background:var(--accent)}
+.hub{left:50%;top:50%;translate:-50% -50%;width:15px;height:15px;border:3px solid var(--paper);background:var(--accent);border-radius:50%}
+.face{top:64%;left:50%;translate:-50% 0;display:flex;align-items:center;gap:6px;font-weight:800}
+.face::before,.face::after{content:"";width:14px;height:8px;border-radius:50%;background:var(--pink)}
+time{display:block;font-variant-numeric:tabular-nums;font-weight:850;font-size:clamp(2rem,9vw,3.15rem);letter-spacing:.045em;line-height:1.2}
+#date{color:var(--soft);margin:5px 0 18px;font-size:.94rem}
+#period{font-size:.85rem;color:var(--accent);vertical-align:middle;letter-spacing:0;margin-right:.45em}
+.controls{display:flex;justify-content:center;flex-wrap:wrap;gap:8px}
+button{background:var(--rim);color:var(--ink);font:inherit;font-size:.85rem;font-weight:700;border:1px solid var(--dot);border-radius:99px;padding:8px 13px;min-height:40px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+@media(max-width:340px){main{padding-inline:15px}body{padding:15px}}
+</style>
+</head>
+<body>
+<main>
+<h1>喵喵時鐘</h1>
+<div class="stage" aria-hidden="true">
+<div class="ear"></div><div class="ear right"></div>
+<div class="dial" id="dial">
+<div class="face">• ᴗ •</div>
+<div class="hand hour" id="hour"></div><div class="hand minute" id="minute"></div><div class="hand second" id="second"></div><div class="hub"></div>
+</div>
+</div>
+<time id="time"><span id="period" hidden></span><span id="digits">--:--:--</span></time>
+<p id="date"></p>
+<div class="controls">
+<button id="format" type="button" aria-pressed="false">12 小時制</button>
+<button id="theme" type="button" aria-pressed="false">☾ 夜間模式</button>
+</div>
+<noscript>請啟用 JavaScript 以顯示即時時間。</noscript>
+</main>
+<script>
+const byId = id => document.getElementById(id);
+const dial = byId('dial');
+function addMarker(className, angle, radius, label = '') {
+  const marker = document.createElement('span');
+  const radians = angle * Math.PI / 180;
+  marker.className = className;
+  marker.textContent = label;
+  marker.style.left = 50 + Math.sin(radians) * radius + '%';
+  marker.style.top = 50 - Math.cos(radians) * radius + '%';
+  marker.style.transform = className.startsWith('tick') ? 'rotate(' + angle + 'deg)' : '';
+  dial.prepend(marker);
+}
+for (let i = 0; i < 60; i++) {
+  addMarker(i % 5 === 0 ? 'tick major' : 'tick', i * 6, 45);
+}
+for (let i = 1; i <= 12; i++) addMarker('number', i * 30, 36, i);
+
+const dateFormat = new Intl.DateTimeFormat('zh-TW', {
+  year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+});
+const pad = value => String(value).padStart(2, '0');
+const rotate = (id, degrees) => byId(id).style.transform = 'rotate(' + degrees + 'deg)';
+let twelveHour = false;
+function update(now = new Date()) {
+  const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds();
+  const localTime = [h, m, s].map(pad).join(':');
+  rotate('hour', (h % 12) * 30 + m / 2 + s / 120);
+  rotate('minute', m * 6 + s / 10);
+  rotate('second', s * 6);
+  byId('digits').textContent = twelveHour ? [h % 12 || 12, m, s].map(pad).join(':') : localTime;
+  byId('time').dateTime = localTime;
+  byId('period').hidden = !twelveHour;
+  byId('period').textContent = twelveHour ? (h < 12 ? '上午' : '下午') : '';
+  byId('date').textContent = dateFormat.format(now);
+}
+byId('format').addEventListener('click', event => {
+  twelveHour = !twelveHour;
+  event.currentTarget.setAttribute('aria-pressed', twelveHour);
+  update();
+});
+byId('theme').addEventListener('click', event => {
+  const root = document.documentElement;
+  const night = root.dataset.theme !== 'night';
+  root.dataset.theme = night ? 'night' : 'day';
+  event.currentTarget.setAttribute('aria-pressed', night);
+});
+function tick() {
+  const now = new Date();
+  update(now);
+  setTimeout(tick, 1000 - now.getMilliseconds());
+}
+tick();
+</script>
+</body>
+</html>
