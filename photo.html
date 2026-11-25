@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>九宮格圖片分割展示</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Google Fonts: Noto Sans TC & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans TC', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 selection:bg-indigo-500 selection:text-white">
+
+    <!-- 主容器 -->
+    <main class="w-full max-w-2xl flex flex-col items-center space-y-6">
+        
+        <!-- 標題與控制列 -->
+        <header class="w-full flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-800/80 backdrop-blur-md p-4 sm:px-6 rounded-2xl border border-slate-700/60 shadow-xl">
+            <div class="text-center sm:text-left">
+                <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">九宮格圖片展示</h1>
+                <p class="text-xs sm:text-sm text-slate-400 mt-0.5">點擊單一區塊可放大檢視，或調整格線間距</p>
+            </div>
+
+            <!-- 互動按鈕群組 -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button id="toggleGapBtn" class="px-4 py-2 text-sm font-medium rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                    </svg>
+                    <span id="gapBtnText">合併無縫</span>
+                </button>
+
+                <button id="viewOriginalBtn" class="px-4 py-2 text-sm font-medium rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-all duration-200 active:scale-95 flex items-center gap-1.5 shadow-md shadow-indigo-500/20">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    <span>檢視原圖</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- 九宮格展示區外框 -->
+        <div class="w-full bg-slate-800/50 p-3 sm:p-5 rounded-3xl border border-slate-700/50 shadow-2xl relative">
+            
+            <!-- 載入中提示 -->
+            <div id="loadingOverlay" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-20 transition-opacity duration-300">
+                <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm text-slate-300 mt-3 font-medium">圖片載入中...</p>
+            </div>
+
+            <!-- 錯誤提示訊息框 (預設隱藏) -->
+            <div id="errorBox" class="hidden flex-col items-center justify-center py-16 px-4 text-center">
+                <svg class="w-12 h-12 text-rose-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <p class="text-slate-200 font-medium">無法載入圖片</p>
+                <p class="text-slate-400 text-sm mt-1">請確認圖片連結是否有效，或網路連線是否正常。</p>
+            </div>
+
+            <!-- 九宮格容器 (3x3 Grid) -->
+            <div id="gridContainer" class="grid grid-cols-3 gap-2 sm:gap-3 w-full transition-all duration-300 mx-auto overflow-hidden rounded-2xl">
+                <!-- 9 個格子將透過 JavaScript 動態生成 -->
+            </div>
+        </div>
+
+        <!-- 底部資訊提示 -->
+        <footer class="text-center text-xs text-slate-500">
+            圖片來源：<a href="https://i.postimg.cc/x1FxNC4S/16662.jpg" target="_blank" rel="noopener noreferrer" class="underline hover:text-slate-300 transition-colors">16662.jpg</a>
+        </footer>
+
+    </main>
+
+    <!-- 燈箱 (Lightbox) 放大檢視視窗 -->
+    <div id="lightboxModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+        <div class="relative max-w-4xl w-full flex flex-col items-center">
+            <!-- 關閉按鈕 -->
+            <button id="closeModalBtn" class="absolute -top-12 right-0 text-slate-300 hover:text-white p-2 rounded-full bg-slate-800/80 hover:bg-slate-700 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+
+            <!-- 標題標籤 -->
+            <div id="modalTitle" class="mb-3 px-4 py-1 rounded-full bg-slate-800/90 text-slate-200 text-sm font-medium border border-slate-700">
+                完整原圖
+            </div>
+
+            <!-- 放大展示區 -->
+            <div id="modalContent" class="w-full max-w-lg aspect-square rounded-2xl overflow-hidden shadow-2xl border border-slate-700/80 bg-slate-900 flex items-center justify-center">
+                <!-- 內容動態填入 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 圖片網址
+            const IMAGE_URL = 'https://i.postimg.cc/x1FxNC4S/16662.jpg';
+            
+            // DOM 元素參考
+            const gridContainer = document.getElementById('gridContainer');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const errorBox = document.getElementById('errorBox');
+            const toggleGapBtn = document.getElementById('toggleGapBtn');
+            const gapBtnText = document.getElementById('gapBtnText');
+            const viewOriginalBtn = document.getElementById('viewOriginalBtn');
+            
+            // 燈箱相關元素
+            const lightboxModal = document.getElementById('lightboxModal');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+
+            // 狀態變數
+            let isGapless = false;
+            let imageAspectRatio = 1; // 預設正方形比例
+
+            /**
+             * 預載圖片以取得原始寬高比，確保九宮格不會變形或裁切錯誤
+             */
+            function initGrid() {
+                const img = new Image();
+                img.src = IMAGE_URL;
+
+                img.onload = () => {
+                    // 計算圖片原始比例，讓九宮格容器完美符合圖片比例
+                    imageAspectRatio = img.naturalWidth / img.naturalHeight;
+                    gridContainer.style.aspectRatio = `${img.naturalWidth} / ${img.naturalHeight}`;
+                    
+                    renderGridCells();
+                    
+                    // 隱藏載入遮罩
+                    loadingOverlay.classList.add('opacity-0');
+                    setTimeout(() => {
+                        loadingOverlay.classList.add('hidden');
+                    }, 300);
+                };
+
+                img.onerror = () => {
+                    // 載入失敗處理
+                    loadingOverlay.classList.add('hidden');
+                    gridContainer.classList.add('hidden');
+                    errorBox.classList.remove('hidden');
+                    errorBox.classList.add('flex');
+                };
+            }
+
+            /**
+             * 建立並渲染 9 個九宮格區塊
+             */
+            function renderGridCells() {
+                gridContainer.innerHTML = '';
+
+                // 3x3 迴圈 (row: 0~2, col: 0~2)
+                for (let row = 0; row < 3; row++) {
+                    for (let col = 0; col < 3; col++) {
+                        const index = row * 3 + col + 1;
+                        
+                        // 計算 background-position 的百分比 (0%, 50%, 100%)
+                        const posX = col * 50;
+                        const posY = row * 50;
+
+                        // 建立格子元素
+                        const cell = document.createElement('div');
+                        cell.className = 'grid-cell relative w-full h-full bg-no-repeat rounded-xl overflow-hidden cursor-pointer group shadow-md transition-all duration-300 hover:scale-[1.02] hover:z-10 hover:shadow-xl hover:ring-2 hover:ring-indigo-400';
+                        
+                        // 設定背景圖片與精準定位 (300% 大小代表將原圖放大3倍，每個格子剛好顯示 1/3)
+                        cell.style.backgroundImage = `url('${IMAGE_URL}')`;
+                        cell.style.backgroundSize = '300% 300%';
+                        cell.style.backgroundPosition = `${posX}% ${posY}%`;
+
+                        // 加入角落編號提示 (滑鼠懸停時顯示)
+                        const badge = document.createElement('span');
+                        badge.className = 'cell-badge absolute bottom-2 right-2 px-2 py-0.5 text-xs font-bold bg-black/60 text-white rounded-md backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none';
+                        badge.textContent = `#${index}`;
+
+                        cell.appendChild(badge);
+
+                        // 點擊單一格子時開啟放大檢視
+                        cell.addEventListener('click', () => {
+                            openLightbox(`九宮格區塊 #${index}`, posX, posY, false);
+                        });
+
+                        gridContainer.appendChild(cell);
+                    }
+                }
+            }
+
+            /**
+             * 切換「有間距」與「無縫合併」模式
+             */
+            toggleGapBtn.addEventListener('click', () => {
+                isGapless = !isGapless;
+                const cells = document.querySelectorAll('.grid-cell');
+
+                if (isGapless) {
+                    // 移除網格間距與圓角，變成完整一張圖
+                    gridContainer.classList.remove('gap-2', 'sm:gap-3');
+                    gridContainer.classList.add('gap-0');
+                    cells.forEach(cell => {
+                        cell.classList.remove('rounded-xl', 'shadow-md');
+                        cell.classList.add('rounded-none');
+                    });
+                    gapBtnText.textContent = '顯示格線';
+                } else {
+                    // 恢復九宮格間距與圓角
+                    gridContainer.classList.remove('gap-0');
+                    gridContainer.classList.add('gap-2', 'sm:gap-3');
+                    cells.forEach(cell => {
+                        cell.classList.remove('rounded-none');
+                        cell.classList.add('rounded-xl', 'shadow-md');
+                    });
+                    gapBtnText.textContent = '合併無縫';
+                }
+            });
+
+            /**
+             * 開啟燈箱檢視單一區塊或完整原圖
+             */
+            function openLightbox(title, posX = 0, posY = 0, isFull = true) {
+                modalTitle.textContent = title;
+                modalContent.innerHTML = '';
+                modalContent.style.aspectRatio = `${imageAspectRatio}`;
+
+                if (isFull) {
+                    // 顯示完整原圖
+                    const fullImg = document.createElement('img');
+                    fullImg.src = IMAGE_URL;
+                    fullImg.alt = '完整原圖';
+                    fullImg.className = 'w-full h-full object-contain';
+                    modalContent.appendChild(fullImg);
+                } else {
+                    // 顯示放大的單一九宮格區塊
+                    const zoomCell = document.createElement('div');
+                    zoomCell.className = 'w-full h-full bg-no-repeat';
+                    zoomCell.style.backgroundImage = `url('${IMAGE_URL}')`;
+                    zoomCell.style.backgroundSize = '300% 300%';
+                    zoomCell.style.backgroundPosition = `${posX}% ${posY}%`;
+                    modalContent.appendChild(zoomCell);
+                }
+
+                // 顯示視窗動畫
+                lightboxModal.classList.remove('hidden');
+                lightboxModal.classList.add('flex');
+                requestAnimationFrame(() => {
+                    lightboxModal.classList.remove('opacity-0');
+                });
+            }
+
+            /**
+             * 關閉燈箱視窗
+             */
+            function closeLightbox() {
+                lightboxModal.classList.add('opacity-0');
+                setTimeout(() => {
+                    lightboxModal.classList.add('hidden');
+                    lightboxModal.classList.remove('flex');
+                }, 300);
+            }
+
+            // 綁定按鈕與視窗關閉事件
+            viewOriginalBtn.addEventListener('click', () => {
+                openLightbox('完整原圖預覽', 0, 0, true);
+            });
+
+            closeModalBtn.addEventListener('click', closeLightbox);
+
+            // 點擊背景空白處關閉燈箱
+            lightboxModal.addEventListener('click', (e) => {
+                if (e.target === lightboxModal) {
+                    closeLightbox();
+                }
+            });
+
+            // 支援 ESC 鍵關閉燈箱
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !lightboxModal.classList.contains('hidden')) {
+                    closeLightbox();
+                }
+            });
+
+            // 啟動初始化
+            initGrid();
+        });
+    </script>
+</body>
+</html>
